@@ -22,7 +22,20 @@ COPY backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Stage 2: Runtime - Minimal production image
+# Stage 2: Frontend builder - Build React/Vite assets
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+# Install JS dependencies first for better caching
+COPY frontend/package*.json /frontend/
+RUN npm ci
+
+# Copy frontend source and build production assets
+COPY frontend/ /frontend/
+RUN npm run build
+
+# Stage 3: Runtime - Minimal production image
 FROM python:3.13-slim-bookworm
 
 LABEL maintainer="NeySlim <https://github.com/NeySlim>" \
@@ -60,6 +73,7 @@ RUN chown ucm:ucm /app
 COPY --chown=ucm:ucm VERSION /app/VERSION
 COPY --chown=ucm:ucm backend/ /app/backend/
 COPY --chown=ucm:ucm frontend/ /app/frontend/
+COPY --from=frontend-builder --chown=ucm:ucm /frontend/dist/ /app/frontend/dist/
 COPY --chown=ucm:ucm wsgi.py /app/wsgi.py
 COPY --chown=ucm:ucm .env.docker.example /app/.env.example
 
