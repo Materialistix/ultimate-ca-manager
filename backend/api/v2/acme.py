@@ -22,6 +22,19 @@ logger = logging.getLogger('ucm.acme')
 bp = Blueprint('acme_v2', __name__)
 
 
+def _extract_contact_email(contact_list):
+    """Extract first email from ACME contact list entries."""
+    if not contact_list:
+        return None
+    for contact in contact_list:
+        if isinstance(contact, str):
+            if contact.startswith('mailto:'):
+                return contact.replace('mailto:', '', 1)
+            if '@' in contact:
+                return contact
+    return None
+
+
 @bp.route('/api/v2/acme/settings', methods=['GET'])
 @require_auth(['read:acme'])
 def get_acme_settings():
@@ -219,11 +232,13 @@ def list_acme_accounts():
     accounts = AcmeAccount.query.order_by(AcmeAccount.created_at.desc()).limit(100).all()
     data = []
     for acc in accounts:
+        contact_list = acc.contact_list
         data.append({
             'id': acc.id,
             'account_id': acc.account_id,
             'status': acc.status,
-            'contact': acc.contact_list,
+            'contact': contact_list,
+            'email': _extract_contact_email(contact_list),
             'terms_of_service_agreed': acc.terms_of_service_agreed,
             'jwk_thumbprint': acc.jwk_thumbprint,
             'created_at': acc.created_at.isoformat()
@@ -311,12 +326,13 @@ def create_acme_account():
             jwk=json.dumps(jwk_dict),
             jwk_thumbprint=jwk_thumbprint,
             status='valid',
-            contact=email,
+            contact=json.dumps([f'mailto:{email}']),
             terms_of_service_agreed=agree_tos,
         )
         db.session.add(account)
         db.session.commit()
 
+        contact_list = account.contact_list
         AuditService.log_action(
             action='acme.account.create',
             resource_type='acme_account',
@@ -328,7 +344,8 @@ def create_acme_account():
             'id': account.id,
             'account_id': account.account_id,
             'status': account.status,
-            'contact': account.contact_list,
+            'contact': contact_list,
+            'email': _extract_contact_email(contact_list),
             'key_type': key_type,
             'terms_of_service_agreed': account.terms_of_service_agreed,
             'created_at': account.created_at.isoformat()
@@ -378,6 +395,7 @@ def get_acme_account(account_id):
         'account_id': acc.account_id,
         'status': acc.status,
         'contact': acc.contact_list,
+        'email': acc.email,
         'terms_of_service_agreed': acc.terms_of_service_agreed,
         'jwk_thumbprint': acc.jwk_thumbprint,
         'created_at': acc.created_at.isoformat()

@@ -32,9 +32,27 @@ class AcmeAccount(db.Model):
         if not self.contact:
             return []
         try:
-            return json.loads(self.contact)
-        except:
+            parsed = json.loads(self.contact)
+            if isinstance(parsed, list):
+                return parsed
+            # Defensive fallback: support JSON string values.
+            if isinstance(parsed, str) and parsed:
+                return [parsed if parsed.startswith('mailto:') else f'mailto:{parsed}']
             return []
+        except Exception:
+            # Backward compatibility: older rows may store plain email string.
+            contact = self.contact.strip()
+            if '@' in contact:
+                return [contact if contact.startswith('mailto:') else f'mailto:{contact}']
+            return []
+
+    @property
+    def email(self):
+        """Primary account email derived from ACME contact list."""
+        for contact in self.contact_list:
+            if isinstance(contact, str) and contact.startswith('mailto:'):
+                return contact.replace('mailto:', '', 1)
+        return None
     
     def to_dict(self):
         """Convert to ACME account object"""

@@ -279,6 +279,16 @@ class TestAcmeServerAccounts:
         r = auth_client.delete('/api/v2/acme/accounts/999999')
         assert_error(r, 404)
 
+    def test_create_account_returns_email_and_mailto_contact(self, auth_client):
+        r = post_json(auth_client, '/api/v2/acme/accounts', {
+            'email': 'acme-test@example.com',
+            'key_type': 'RSA-2048',
+            'agree_tos': True
+        })
+        data = assert_success(r)
+        assert data.get('email') == 'acme-test@example.com'
+        assert data.get('contact') == ['mailto:acme-test@example.com']
+
 
 # ============================================================
 # ACME Server — Orders
