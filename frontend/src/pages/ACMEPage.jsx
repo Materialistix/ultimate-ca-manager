@@ -403,10 +403,13 @@ export default function ACMEPage() {
   const handleCreate = async (data) => {
     try {
       const created = await acmeService.createAccount(data)
+      const createdAccount = created?.data || created
       showSuccess(t('acme.accountCreatedSuccess'))
       setShowCreateModal(false)
       loadData()
-      selectAccount(created)
+      if (createdAccount?.id) {
+        selectAccount(createdAccount)
+      }
     } catch (error) {
       showError(error.message || t('acme.accountCreationFailed'))
     }
