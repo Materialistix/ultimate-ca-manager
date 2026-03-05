@@ -31,6 +31,9 @@ WORKDIR /frontend
 COPY frontend/package*.json /frontend/
 RUN npm ci
 
+# Vite config reads version from absolute path '/VERSION'
+COPY VERSION /VERSION
+
 # Copy frontend source and build production assets
 COPY frontend/ /frontend/
 RUN npm run build
