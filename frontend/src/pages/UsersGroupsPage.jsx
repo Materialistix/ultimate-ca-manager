@@ -280,13 +280,13 @@ export default function UsersGroupsPage() {
 
   // Load mTLS certs when user selected
   useEffect(() => {
-    if (selectedUser?.id && canWrite('users')) {
+    if (selectedUser?.id && canManageUsers) {
       loadUserMtlsCerts(selectedUser.id)
       loadCAsOnce()
     } else {
       setUserMtlsCerts([])
     }
-  }, [selectedUser?.id, canWrite, loadUserMtlsCerts, loadCAsOnce])
+  }, [selectedUser?.id, canManageUsers, loadUserMtlsCerts, loadCAsOnce])
 
   const handleOpenMtlsModal = () => {
     setMtlsTab('generate')
@@ -411,6 +411,7 @@ export default function UsersGroupsPage() {
   }, [users, filterRole, filterStatus])
 
   const filteredGroups = useMemo(() => groups, [groups])
+  const canManageUsers = canWrite('users')
 
   // ============= STATS =============
   
