@@ -5,7 +5,7 @@
  * DESKTOP: Dense table with hover rows, inline slide-over details
  * MOBILE: Card-style list with full-screen details
  */
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { 
@@ -29,6 +29,7 @@ export default function UsersGroupsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { showSuccess, showError, showConfirm } = useNotification()
   const { canWrite, canDelete } = usePermission()
+  const canManageUsers = canWrite('users')
   const { muteToasts } = useWebSocket()
   
   // Tab state
@@ -64,6 +65,8 @@ export default function UsersGroupsPage() {
   const [availableCerts, setAvailableCerts] = useState([])
   const [availableCertsLoading, setAvailableCertsLoading] = useState(false)
   const [selectedAssignCert, setSelectedAssignCert] = useState(null)
+  const casLoadedRef = useRef(false)
+  const casLoadingRef = useRef(false)
   
   // Pagination
   const [page, setPage] = useState(1)
@@ -271,22 +274,27 @@ export default function UsersGroupsPage() {
   }, [])
 
   const loadCAsOnce = useCallback(async () => {
-    if (cas.length > 0) return
+    if (casLoadedRef.current || casLoadingRef.current) return
+    casLoadingRef.current = true
     try {
       const response = await casService.getAll()
       setCas(response.data?.items || response.data || [])
-    } catch {}
-  }, [cas.length])
+      casLoadedRef.current = true
+    } catch {
+    } finally {
+      casLoadingRef.current = false
+    }
+  }, [])
 
   // Load mTLS certs when user selected
   useEffect(() => {
-    if (selectedUser?.id && canWrite('users')) {
+    if (selectedUser?.id && canManageUsers) {
       loadUserMtlsCerts(selectedUser.id)
       loadCAsOnce()
     } else {
       setUserMtlsCerts([])
     }
-  }, [selectedUser?.id, canWrite, loadUserMtlsCerts, loadCAsOnce])
+  }, [selectedUser?.id, canManageUsers, loadUserMtlsCerts, loadCAsOnce])
 
   const handleOpenMtlsModal = () => {
     setMtlsTab('generate')
