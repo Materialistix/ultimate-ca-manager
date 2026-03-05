@@ -135,8 +135,8 @@ class CAService:
             subject=cert.subject.rfc4514_string(),
             issuer=cert.issuer.rfc4514_string(),
             ski=ca_ski,
-            valid_from=cert.not_valid_before,
-            valid_to=cert.not_valid_after,
+            valid_from=cert.not_valid_before_utc if hasattr(cert, 'not_valid_before_utc') else cert.not_valid_before,
+            valid_to=cert.not_valid_after_utc if hasattr(cert, 'not_valid_after_utc') else cert.not_valid_after,
             imported_from='generated',
             created_by=username
         )

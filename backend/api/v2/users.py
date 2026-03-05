@@ -697,6 +697,7 @@ def create_user_mtls_certificate(user_id):
     from models import Certificate, CA, SystemConfig
     from models.auth_certificate import AuthCertificate
     from services.cert_service import CertificateService
+    from utils.file_naming import cert_key_path
 
     target_user = User.query.get(user_id)
     if not target_user:
@@ -804,12 +805,17 @@ def create_user_mtls_certificate(user_id):
             return error_response('No CA available for mTLS certificate generation', 400)
 
         try:
-            result = CertificateService.create_user_certificate(
-                ca_refid=ca.refid,
-                common_name=name,
+            result = CertificateService.create_certificate(
+                descr=name,
+                caref=ca.refid,
+                dn={
+                    'CN': f'{target_user.username}@mtls',
+                    'O': 'UCM Users',
+                    'OU': 'mTLS Clients',
+                },
+                cert_type='usr_cert',
                 validity_days=int(validity_days),
-                key_type='RSA',
-                key_size=2048,
+                key_type='2048',
                 username=target_user.username,
             )
 
@@ -837,7 +843,10 @@ def create_user_mtls_certificate(user_id):
             db.session.add(auth_cert)
             db.session.commit()
 
-            key_pem = base64.b64decode(result.prv).decode('utf-8') if result.prv else ''
+            key_pem = ''
+            key_file = cert_key_path(result)
+            if key_file.exists():
+                key_pem = key_file.read_text()
 
             AuditService.log_action(
                 action='admin_mtls_generate',
